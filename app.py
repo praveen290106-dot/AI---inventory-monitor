@@ -200,7 +200,7 @@ TEXT:
 
 if __name__ == "__main__":
     app = create_app()
-    port = app.config.get("PORT", 5000)
-    debug = app.config.get("DEBUG", True)
+    port = app.config.get("PORT", 10000)
+    debug = app.config.get("DEBUG", False)
     logger.info(f"Starting AI Inventory Monitor on http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port=port, debug=debug)
