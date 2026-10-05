@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-robot"></i> Inventory Intelligence Assistant
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto; width: 100%;">
+  <!-- AI Status Banner -->
+  <div id="aiConfigAlert" class="alert alert-warning" style="display: none; margin-bottom: 16px;">
+    <span>
+      <i class="fa-solid fa-circle-exclamation"></i>
+      <strong>Microsoft Foundry AI Notice:</strong>
+      <span id="aiConfigAlertText">Microsoft Foundry credentials not configured in <code>.env</code>. Core inventory features are active, but live AI queries will return service status.</span>
+    </span>
+  </div>
+
+  <div class="chat-container">
+    <!-- Chat Header -->
+    <div class="chat-header">
+      <div class="chat-assistant-info">
+        <div class="assistant-avatar">
+          <i class="fa-solid fa-microchip"></i>
+        </div>
+        <div>
+          <h3 style="font-size: 1rem; color: #fff;">Inventory Intelligence Assistant</h3>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">
+            Powered by Microsoft Foundry &bull; Live SQLite Database Context
+          </span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-sm" onclick="clearChat()">
+          <i class="fa-solid fa-eraser"></i> Clear Chat
+        </button>
+        <a href="{{ url_for('ai.ai_insights_page') }}" class="btn btn-cyan btn-sm">
+          <i class="fa-solid fa-brain"></i> AI Insights Hub
+        </a>
+      </div>
+    </div>
+
+    <!-- Live Chat Messages -->
+    <div class="chat-messages" id="chatMessages">
+      <!-- Welcome Message -->
+      <div class="message-bubble assistant">
+        <div class="assistant-avatar" style="width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0;">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="message-content">
+          <p><strong>Hello! I am your Microsoft Foundry Inventory Intelligence Assistant.</strong></p>
+          <p style="margin-top: 6px;">
+            I have real-time access to your SQLite inventory records, stock thresholds, and transaction movements. You can ask me natural-language questions such as:
+          </p>
+          <ul style="margin-top: 6px; padding-left: 18px;">
+            <li>Which products need immediate restocking?</li>
+            <li>Give me an executive summary of today's inventory health.</li>
+            <li>Which category has the highest stock risk or turnover?</li>
+            <li>Analyze our current supply chain and shortage risks.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Suggestion Chips -->
+    <div class="chat-suggestions">
+      <span style="font-size: 0.75rem; color: var(--text-dim); display: flex; align-items: center;">Quick Prompts:</span>
+      <button class="suggestion-chip" onclick="sendPrompt('Which products need immediate restocking?')">
+        🚨 Immediate restocking?
+      </button>
+      <button class="suggestion-chip" onclick="sendPrompt('Give me a summary of today\'s inventory.')">
+        📊 Today's inventory summary
+      </button>
+      <button class="suggestion-chip" onclick="sendPrompt('Which products are low in stock?')">
+        ⚠️ Low stock items
+      </button>
+      <button class="suggestion-chip" onclick="sendPrompt('Analyze the current inventory risks.')">
+        🔍 Analyze inventory risks
+      </button>
+      <button class="suggestion-chip" onclick="sendPrompt('Which category has the most stock issues?')">
+        📦 Category stock issues
+      </button>
+    </div>
+
+    <!-- Chat Input Form -->
+    <form id="chatForm" class="chat-input-bar">
+      <input
+        type="text"
+        id="userInput"
+        class="form-control"
+        placeholder="Ask the AI Assistant about stock, restocking, suppliers, or risks..."
+        autocomplete="off"
+        required
+      >
+      <button type="submit" id="sendBtn" class="btn btn-cyan">
+        <i class="fa-solid fa-paper-plane"></i> Send
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ai_assistant.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI-Powered Inventory Monitor{% endblock %}</title>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js for enterprise dashboards -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Custom Modern Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    <!-- Collapsible Enterprise Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-boxes-stacked"></i>
+        </div>
+        <div>
+          <h2>InvMonitor <span class="tag">AI</span></h2>
+          <span style="font-size: 0.72rem; color: var(--text-dim);">Enterprise System</span>
+        </div>
+      </div>
+
+      <ul class="nav-links">
+        <li class="nav-item {% if request.endpoint == 'dashboard.dashboard_page' %}active{% endif %}">
+          <a href="{{ url_for('dashboard.dashboard_page') }}">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Inventory Dashboard</span>
+          </a>
+        </li>
+        <li class="nav-item {% if 'products' in request.endpoint %}active{% endif %}">
+          <a href="{{ url_for('products.products_page') }}">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>Products</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.endpoint == 'inventory.inventory_page' %}active{% endif %}">
+          <a href="{{ url_for('inventory.inventory_page') }}">
+            <i class="fa-solid fa-warehouse"></i>
+            <span>Inventory</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.endpoint == 'inventory.transactions_page' %}active{% endif %}">
+          <a href="{{ url_for('inventory.transactions_page') }}">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Transactions</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.endpoint == 'inventory.alerts_page' %}active{% endif %}">
+          <a href="{{ url_for('inventory.alerts_page') }}">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>Alerts</span>
+          </a>
+        </li>
+
+        <li style="padding: 12px 14px 4px 14px; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">
+          Foundry AI Tools
+        </li>
+
+        <li class="nav-item {% if request.endpoint == 'ai.ai_assistant_page' %}active{% endif %}">
+          <a href="{{ url_for('ai.ai_assistant_page') }}">
+            <i class="fa-solid fa-robot"></i>
+            <span>AI Assistant</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.endpoint == 'ai.ai_insights_page' %}active{% endif %}">
+          <a href="{{ url_for('ai.ai_insights_page') }}">
+            <i class="fa-solid fa-brain"></i>
+            <span>AI Insights</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.path == '/vision' %}active{% endif %}">
+          <a href="/vision">
+            <i class="fa-solid fa-eye"></i>
+            <span>Vision Inspection</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.path == '/text-analysis' %}active{% endif %}">
+          <a href="/text-analysis">
+            <i class="fa-solid fa-file-waveform"></i>
+            <span>Text & Order Analysis</span>
+          </a>
+        </li>
+        <li class="nav-item {% if request.path == '/chat' %}active{% endif %}">
+          <a href="/chat">
+            <i class="fa-solid fa-comments"></i>
+            <span>General AI Chat</span>
+          </a>
+        </li>
+
+        <li class="nav-item" style="margin-top: 10px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+          <a href="{{ url_for('auth.logout_view') }}" style="color: #f87171;">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-badge">
+          <div class="user-avatar">
+            <i class="fa-solid fa-user-shield"></i>
+          </div>
+          <div class="user-info">
+            <span class="user-name">{{ session.get('username', 'Administrator') }}</span>
+            <span class="user-role">{{ session.get('role', 'admin') }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <div class="main-wrapper">
+      <header class="topbar">
+        <h1 class="page-title">
+          {% block page_title %}<i class="fa-solid fa-gauge-high"></i> Dashboard{% endblock %}
+        </h1>
+
+        <div class="topbar-actions">
+          <!-- Microsoft Foundry Status Indicator -->
+          <div class="foundry-indicator" id="foundryStatusIndicator">
+            <span class="status-dot warning" id="foundryStatusDot"></span>
+            <span id="foundryStatusText" style="color: var(--text-muted);">Checking AI...</span>
+          </div>
+          <a href="{{ url_for('products.add_product_page') }}" class="btn btn-cyan btn-sm">
+            <i class="fa-solid fa-plus"></i> Add Product
+          </a>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <!-- Flash notifications -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <span><i class="fa-solid fa-circle-info"></i> {{ message }}</span>
+                <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Global scripts -->
+  <script>
+    // Live check of Microsoft Foundry status via /api/health
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const resp = await fetch("/api/health");
+        const data = await resp.json();
+        const dot = document.getElementById("foundryStatusDot");
+        const text = document.getElementById("foundryStatusText");
+        
+        if (data.microsoft_foundry_configured) {
+          dot.className = "status-dot online";
+          text.innerHTML = `<strong>Microsoft Foundry:</strong> Online (${data.deployment || 'Configured'})`;
+          text.style.color = "#34d399";
+        } else {
+          dot.className = "status-dot warning";
+          text.innerHTML = `<strong>Microsoft Foundry:</strong> Unconfigured (.env)`;
+          text.style.color = "#fbbf24";
+        }
+      } catch (e) {
+        console.warn("Could not check health endpoint", e);
+      }
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

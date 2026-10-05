@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Home - AI-Powered Inventory Monitor & Microsoft Foundry Suite{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-house-laptop"></i> AI Inventory Monitor & Microsoft Foundry Portal
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: 28px;">
+  <!-- Welcome Hero Banner -->
+  <div class="card" style="background: linear-gradient(135deg, rgba(24, 17, 44, 0.95), rgba(9, 8, 15, 0.98)); border: 1px solid rgba(168, 85, 247, 0.4); box-shadow: 0 0 25px rgba(168, 85, 247, 0.15);">
+    <div class="card-body" style="padding: 36px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div style="max-width: 650px;">
+          <span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.4); margin-bottom: 12px; box-shadow: 0 0 10px rgba(168, 85, 247, 0.25);">
+            <i class="fa-solid fa-microchip"></i> Microsoft Foundry & Azure AI Active
+          </span>
+          <h1 style="font-size: 1.8rem; color: #fff; margin-bottom: 10px;">
+            AI-Powered Enterprise Inventory Intelligence
+          </h1>
+          <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6;">
+            A unified operations and artificial intelligence platform combining real-time SQLite stock tracking with Microsoft Foundry AI models (GPT-4.1-mini and Vision).
+          </p>
+          <div style="display: flex; gap: 12px; margin-top: 20px;">
+            <a href="{{ url_for('dashboard.dashboard_page') }}" class="btn btn-cyan">
+              <i class="fa-solid fa-gauge-high"></i> Inventory Dashboard
+            </a>
+            <a href="{{ url_for('ai.ai_assistant_page') }}" class="btn btn-primary">
+              <i class="fa-solid fa-robot"></i> Inventory AI Assistant
+            </a>
+          </div>
+        </div>
+
+        <div style="text-align: center; background: rgba(9, 8, 15, 0.85); padding: 20px; border-radius: 12px; border: 1px solid rgba(168, 85, 247, 0.3); min-width: 240px; box-shadow: 0 0 15px rgba(0,0,0,0.5);">
+          <i class="fa-solid fa-cloud-bolt" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 8px; display: block; filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.5));"></i>
+          <span style="font-size: 0.85rem; color: var(--text-dim);">Deployed Model</span>
+          <h3 style="color: #c084fc; font-size: 1.15rem; margin-top: 4px; text-shadow: 0 0 10px rgba(192, 132, 252, 0.4);">gpt-4.1-mini</h3>
+          <span class="badge badge-normal" style="margin-top: 8px;">Connected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Multimodal AI Capabilities Grid -->
+  <h3 style="color: #fff; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+    <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Microsoft Foundry AI Capabilities
+  </h3>
+
+  <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+    <!-- AI Assistant -->
+    <a href="{{ url_for('ai.ai_assistant_page') }}" class="stat-card" style="display: flex; flex-direction: column; align-items: flex-start; text-decoration: none;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+        <div class="stat-icon cyan" style="width: 44px; height: 44px; font-size: 1.2rem;">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <h4 style="color: #fff; font-size: 1.05rem;">Inventory AI Assistant</h4>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        Ask questions about stock levels, reorder quantities, restock forecasting, and warehouse health.
+      </p>
+    </a>
+
+    <!-- AI Insights -->
+    <a href="{{ url_for('ai.ai_insights_page') }}" class="stat-card" style="display: flex; flex-direction: column; align-items: flex-start; text-decoration: none;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+        <div class="stat-icon purple" style="width: 44px; height: 44px; font-size: 1.2rem;">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <h4 style="color: #fff; font-size: 1.05rem;">AI Inventory Insights</h4>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        Automated stock analysis, executive summary, fast-moving items, and restock recommendations.
+      </p>
+    </a>
+
+    <!-- Vision Inspection -->
+    <a href="/vision" class="stat-card" style="display: flex; flex-direction: column; align-items: flex-start; text-decoration: none;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+        <div class="stat-icon blue" style="width: 44px; height: 44px; font-size: 1.2rem;">
+          <i class="fa-solid fa-eye"></i>
+        </div>
+        <h4 style="color: #fff; font-size: 1.05rem;">Vision Inspection</h4>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        Upload photos of warehouse items, packaging, or shelves for automated defect and stock recognition.
+      </p>
+    </a>
+
+    <!-- Text & Order Analysis -->
+    <a href="/text-analysis" class="stat-card" style="display: flex; flex-direction: column; align-items: flex-start; text-decoration: none;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+        <div class="stat-icon yellow" style="width: 44px; height: 44px; font-size: 1.2rem;">
+          <i class="fa-solid fa-file-waveform"></i>
+        </div>
+        <h4 style="color: #fff; font-size: 1.05rem;">Text & Order Analysis</h4>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        Extract sentiment, keywords, and entities from supplier communications, invoice memos, and purchase orders.
+      </p>
+    </a>
+
+    <!-- General AI Chat -->
+    <a href="/chat" class="stat-card" style="display: flex; flex-direction: column; align-items: flex-start; text-decoration: none;">
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+        <div class="stat-icon green" style="width: 44px; height: 44px; font-size: 1.2rem;">
+          <i class="fa-solid fa-comments"></i>
+        </div>
+        <h4 style="color: #fff; font-size: 1.05rem;">General AI Chat</h4>
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4;">
+        Direct conversational interface with Microsoft Foundry gpt-4.1-mini for general enterprise reasoning.
+      </p>
+    </a>
+  </div>
+</div>
+{% endblock %}

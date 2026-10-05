@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Vision AI - Microsoft Foundry{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-eye"></i> Microsoft Foundry Vision Inspection
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; width: 100%;">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-camera" style="color: var(--primary);"></i> Visual Stock & Defect Inspection</h3>
+      <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">gpt-4.1-mini Vision</span>
+    </div>
+    <div class="card-body">
+      <form id="visionForm" enctype="multipart/form-data">
+        <div class="form-group">
+          <label class="form-label" for="imageInput">Upload Image (JPG, PNG, WEBP)</label>
+          <input type="file" id="imageInput" name="image" class="form-control" accept="image/*" required onchange="previewImage(event)">
+        </div>
+
+        <!-- Image Preview Container -->
+        <div id="previewBox" style="display: none; margin-bottom: 20px; text-align: center; background: rgba(15, 23, 42, 0.8); padding: 14px; border-radius: 8px; border: 1px dashed var(--border-color);">
+          <img id="imagePreview" src="" alt="Preview" style="max-height: 280px; max-width: 100%; border-radius: 6px;">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="promptInput">Inspection Prompt</label>
+          <input type="text" id="promptInput" name="prompt" class="form-control" value="Examine this image in the context of warehouse inventory. Identify items, count units if visible, and check for any physical damage or defects." required>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+          <span style="font-size: 0.75rem; color: var(--text-dim); display: flex; align-items: center;">Quick Prompts:</span>
+          <button type="button" class="suggestion-chip" onclick="setPrompt('Identify all visible products and estimate their quantities.')">
+            📦 Count items
+          </button>
+          <button type="button" class="suggestion-chip" onclick="setPrompt('Inspect packaging for tears, crushing, water damage, or open seals.')">
+            ⚠️ Check defects
+          </button>
+          <button type="button" class="suggestion-chip" onclick="setPrompt('Read any labels, barcodes, SKU numbers, or serial numbers visible.')">
+            🏷️ Read labels
+          </button>
+        </div>
+
+        <button type="submit" id="visionBtn" class="btn btn-cyan">
+          <i class="fa-solid fa-magnifying-glass"></i> Inspect Image with Vision AI
+        </button>
+      </form>
+
+      <!-- Results Box -->
+      <div id="visionResultCard" style="display: none; margin-top: 24px; padding: 20px; border-radius: 10px; background: rgba(9, 8, 15, 0.85); border: 1px solid var(--border-color); box-shadow: var(--neo-box-shadow);">
+        <h4 style="color: #c084fc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; text-shadow: 0 0 8px rgba(192, 132, 252, 0.3);">
+          <i class="fa-solid fa-clipboard-check"></i> Vision Inspection Report
+        </h4>
+        <div id="visionResultContent" style="white-space: pre-line; line-height: 1.6; color: var(--text-main);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewImage(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById("imagePreview").src = e.target.result;
+      document.getElementById("previewBox").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function setPrompt(p) {
+  document.getElementById("promptInput").value = p;
+}
+
+document.getElementById("visionForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById("imageInput");
+  const promptInput = document.getElementById("promptInput");
+  const btn = document.getElementById("visionBtn");
+  const resCard = document.getElementById("visionResultCard");
+  const resContent = document.getElementById("visionResultContent");
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Please select an image file first.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("image", fileInput.files[0]);
+  formData.append("prompt", promptInput.value);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing Vision Model...';
+  resCard.style.display = "block";
+  resContent.innerHTML = '<div style="color: var(--text-dim);"><i class="fa-solid fa-circle-notch fa-spin"></i> Transmitting image to Microsoft Foundry gpt-4.1-mini Vision...</div>';
+
+  try {
+    const res = await fetch("/api/vision", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+
+    if (res.ok && data.result) {
+      resContent.innerHTML = formatMarkdown(data.result);
+    } else {
+      resContent.innerHTML = `<span style="color:#f87171;">Error: ${escapeHtml(data.error || "Vision analysis failed.")}</span>`;
+    }
+  } catch (err) {
+    resContent.innerHTML = `<span style="color:#f87171;">Network error connecting to Vision API.</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Inspect Image with Vision AI';
+  }
+});
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/^### (.*$)/gim, '<h4 style="color:#c084fc; margin: 10px 0 4px 0;">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 style="color:#c084fc; margin: 12px 0 6px 0;">$1</h3>');
+  html = html.replace(/^\* (.*$)/gim, '<li style="margin-left: 20px;">$1</li>');
+  html = html.replace(/^- (.*$)/gim, '<li style="margin-left: 20px;">$1</li>');
+  html = html.replace(/\n/g, "<br>");
+  return html;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

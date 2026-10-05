@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Product - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-pen-to-square"></i> Edit Catalog Product
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fa-solid fa-cube" style="color: var(--primary);"></i> Edit: {{ product.product_name }}
+        <span style="font-size: 0.8rem; color: var(--text-dim); margin-left: 8px;">(ID #{{ product.id }})</span>
+      </h3>
+      <a href="{{ url_for('products.products_page') }}" class="btn btn-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Products
+      </a>
+    </div>
+
+    <div class="card-body">
+      <div id="formAlert" style="display: none;" class="alert alert-danger" style="margin-bottom: 20px;">
+        <span id="formAlertText"></span>
+      </div>
+
+      <form id="editProductForm">
+        <input type="hidden" id="product_id" value="{{ product.id }}">
+
+        <div class="form-row">
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label" for="product_name">Product Name *</label>
+            <input type="text" id="product_name" name="product_name" class="form-control" value="{{ product.product_name }}" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="category">Category *</label>
+            <input type="text" id="category" name="category" class="form-control" value="{{ product.category }}" required list="categorySuggestions">
+            <datalist id="categorySuggestions">
+              <option value="Computers">
+              <option value="Accessories">
+              <option value="Displays">
+              <option value="Office Equipment">
+              <option value="Networking">
+              <option value="Audio">
+              <option value="Storage">
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="supplier">Supplier / Vendor</label>
+            <input type="text" id="supplier" name="supplier" class="form-control" value="{{ product.supplier or '' }}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Product Description</label>
+          <textarea id="description" name="description" class="form-control" rows="3">{{ product.description or '' }}</textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="price">Unit Price ($) *</label>
+            <input type="number" id="price" name="price" class="form-control" step="0.01" min="0" value="{{ product.price }}" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="quantity">Stock Quantity *</label>
+            <input type="number" id="quantity" name="quantity" class="form-control" min="0" value="{{ product.quantity }}" required>
+            <small style="color: var(--text-dim); font-size: 0.75rem;">Modifying this directly will log an inventory ADJUSTMENT audit record.</small>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="minimum_stock">Minimum Stock Alert Threshold *</label>
+            <input type="number" id="minimum_stock" name="minimum_stock" class="form-control" min="0" value="{{ product.minimum_stock }}" required>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <a href="{{ url_for('products.products_page') }}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" id="submitBtn" class="btn btn-cyan">
+            <i class="fa-solid fa-check"></i> Update Product
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("editProductForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const alertBox = document.getElementById("formAlert");
+  const alertText = document.getElementById("formAlertText");
+  const submitBtn = document.getElementById("submitBtn");
+  const productId = document.getElementById("product_id").value;
+
+  alertBox.style.display = "none";
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Updating...';
+
+  const payload = {
+    product_name: document.getElementById("product_name").value.trim(),
+    category: document.getElementById("category").value.trim(),
+    supplier: document.getElementById("supplier").value.trim(),
+    description: document.getElementById("description").value.trim(),
+    price: parseFloat(document.getElementById("price").value),
+    quantity: parseInt(document.getElementById("quantity").value),
+    minimum_stock: parseInt(document.getElementById("minimum_stock").value)
+  };
+
+  try {
+    const res = await fetch(`/api/products/${productId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      window.location.href = "/products";
+    } else {
+      alertText.innerText = data.error || "Failed to update product.";
+      alertBox.style.display = "flex";
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Update Product';
+    }
+  } catch (err) {
+    alertText.innerText = "Network error connecting to API.";
+    alertBox.style.display = "flex";
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Update Product';
+  }
+});
+</script>
+{% endblock %}

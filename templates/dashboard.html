@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-gauge-high"></i> Inventory Executive Dashboard
+{% endblock %}
+
+{% block content %}
+<!-- Quick Stat KPI Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue">
+      <i class="fa-solid fa-boxes-stacked"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Total Products</span>
+      <span class="stat-value" id="kpiTotalProducts">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon purple">
+      <i class="fa-solid fa-cubes"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Total Stock Units</span>
+      <span class="stat-value" id="kpiTotalUnits">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <i class="fa-solid fa-dollar-sign"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Inventory Valuation</span>
+      <span class="stat-value" id="kpiTotalValue">$--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Low Stock Items</span>
+      <span class="stat-value" id="kpiLowStock">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon red">
+      <i class="fa-solid fa-circle-xmark"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Out of Stock</span>
+      <span class="stat-value" id="kpiOutOfStock">--</span>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+  <!-- Category Bar Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-column" style="color: var(--primary);"></i> Stock Units by Category</h3>
+    </div>
+    <div class="card-body" style="height: 300px; position: relative;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Status Doughnut Chart -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-chart-pie" style="color: #a78bfa;"></i> Inventory Health Breakdown</h3>
+    </div>
+    <div class="card-body" style="height: 300px; position: relative;">
+      <canvas id="statusChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Critical Attention Tables & AI Insights Row -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+  <!-- At Risk Products (Low & Out of Stock) -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-bell" style="color: #fbbf24;"></i> Critical Inventory Attention</h3>
+      <a href="{{ url_for('inventory.alerts_page') }}" class="btn btn-secondary btn-sm">View All Alerts</a>
+    </div>
+    <div class="card-body" style="padding: 0;">
+      <div class="table-responsive">
+        <table class="custom-table" id="attentionTable">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Current</th>
+              <th>Min Stock</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="attentionTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading alert data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Insights Preview Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-brain" style="color: var(--primary);"></i> Recent AI Insights & Recommendations</h3>
+      <a href="{{ url_for('ai.ai_assistant_page') }}" class="btn btn-cyan btn-sm">
+        <i class="fa-solid fa-robot"></i> Open AI Assistant
+      </a>
+    </div>
+    <div class="card-body" id="recentInsightsContainer" style="display: flex; flex-direction: column; gap: 14px; max-height: 420px; overflow-y: auto;">
+      <div style="text-align: center; color: var(--text-dim); padding: 24px;">Loading AI insights...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Transactions Audit Log -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> Recent Inventory Transactions</h3>
+    <a href="{{ url_for('inventory.transactions_page') }}" class="btn btn-secondary btn-sm">Full Transaction Log</a>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Tx ID</th>
+            <th>Timestamp</th>
+            <th>Product Name</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Balance (Prev &rarr; New)</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="transactionsTableBody">
+          <tr>
+            <td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading transaction records...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Restock Quick Modal -->
+<div class="modal-overlay" id="restockModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-dolly"></i> Quick Restock Product</h4>
+      <button class="modal-close" onclick="closeRestockModal()">&times;</button>
+    </div>
+    <form id="quickRestockForm">
+      <div class="modal-body">
+        <input type="hidden" id="modalProductId">
+        <div class="form-group">
+          <label class="form-label">Product Name</label>
+          <input type="text" id="modalProductName" class="form-control" readonly>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Current Stock</label>
+            <input type="text" id="modalCurrentStock" class="form-control" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Units to Add (Stock-In)</label>
+            <input type="number" id="modalAddQty" class="form-control" min="1" value="10" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Remarks</label>
+          <input type="text" id="modalRemarks" class="form-control" placeholder="PO restock replenishment">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeRestockModal()">Cancel</button>
+        <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Confirm Stock-In</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

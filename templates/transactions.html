@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-clock-rotate-left"></i> Inventory Transaction Audit Trail
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Complete Movement Audit Log</h3>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <select id="typeFilter" class="form-control" style="width: auto;">
+        <option value="">All Transaction Types</option>
+        <option value="STOCK_IN">Stock In (+)</option>
+        <option value="STOCK_OUT">Stock Out (-)</option>
+        <option value="ADJUSTMENT">Adjustment (&plusmn;)</option>
+      </select>
+      <select id="limitFilter" class="form-control" style="width: auto;">
+        <option value="50">Last 50 Records</option>
+        <option value="100" selected>Last 100 Records</option>
+        <option value="200">Last 200 Records</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadTransactions()">
+        <i class="fa-solid fa-rotate"></i> Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table" id="transactionsTable">
+        <thead>
+          <tr>
+            <th>Tx ID</th>
+            <th>Timestamp</th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Quantity Changed</th>
+            <th>Previous Qty</th>
+            <th>New Qty</th>
+            <th>Audit Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="transactionsTbody">
+          <tr>
+            <td colspan="9" style="text-align: center; color: var(--text-dim); padding: 32px;">
+              <i class="fa-solid fa-spinner fa-spin"></i> Loading transaction history...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  loadTransactions();
+  document.getElementById("typeFilter").addEventListener("change", loadTransactions);
+  document.getElementById("limitFilter").addEventListener("change", loadTransactions);
+});
+
+async function loadTransactions() {
+  const tbody = document.getElementById("transactionsTbody");
+  const type = document.getElementById("typeFilter").value;
+  const limit = document.getElementById("limitFilter").value;
+
+  let url = `/api/inventory/transactions?limit=${limit}`;
+  if (type) url += `&type=${encodeURIComponent(type)}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success) {
+      renderTransactions(data.transactions);
+    }
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #f87171; padding: 24px;">Failed to load transactions.</td></tr>`;
+  }
+}
+
+function renderTransactions(transactions) {
+  const tbody = document.getElementById("transactionsTbody");
+  if (!transactions || transactions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-dim); padding: 32px;">No transaction records found matching filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = transactions.map(t => {
+    let typeBadge = "badge-tx-in";
+    let sign = "+";
+    let deltaColor = "#34d399";
+
+    if (t.transaction_type === "STOCK_OUT") {
+      typeBadge = "badge-tx-out";
+      sign = "-";
+      deltaColor = "#f87171";
+    } else if (t.transaction_type === "ADJUSTMENT") {
+      typeBadge = "badge-tx-adj";
+      const diff = t.new_quantity - t.previous_quantity;
+      sign = diff >= 0 ? "+" : "-";
+      deltaColor = diff >= 0 ? "#34d399" : "#f87171";
+    }
+
+    const formattedDate = t.created_at ? new Date(t.created_at).toLocaleString() : "";
+
+    return `
+      <tr>
+        <td><code>#TX-${t.id}</code></td>
+        <td style="color: var(--text-dim);">${formattedDate}</td>
+        <td><strong>${escapeHtml(t.product_name)}</strong></td>
+        <td><span style="color: var(--text-muted);">${escapeHtml(t.category)}</span></td>
+        <td><span class="badge ${typeBadge}">${t.transaction_type}</span></td>
+        <td><strong style="color: ${deltaColor};">${sign}${t.quantity}</strong></td>
+        <td style="color: var(--text-dim);">${t.previous_quantity}</td>
+        <td><strong>${t.new_quantity}</strong></td>
+        <td style="color: var(--text-muted); font-size: 0.85rem;">${escapeHtml(t.remarks || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

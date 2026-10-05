@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Text Analysis - Microsoft Foundry AI{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-file-waveform"></i> AI Text & Order Analysis
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; width: 100%;">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-magnifying-glass-chart" style="color: var(--primary);"></i> Extract Sentiment, Keywords, Entities & Summary</h3>
+    </div>
+    <div class="card-body">
+      <form id="analysisForm">
+        <div class="form-group">
+          <label class="form-label" for="analysisText">Enter Text or Paste Vendor Note / Invoice Memo</label>
+          <textarea id="analysisText" class="form-control" rows="6" placeholder="Paste order descriptions, customer feedback, supplier notes, or shipment logs here..." required></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button type="submit" id="analyzeBtn" class="btn btn-cyan">
+            <i class="fa-solid fa-brain"></i> Analyze Text
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="loadSampleText()">
+            Load Sample Warehouse Note
+          </button>
+        </div>
+      </form>
+
+      <!-- Results Box -->
+      <div id="resultsCard" style="display: none; margin-top: 24px; padding: 20px; border-radius: 10px; background: rgba(9, 8, 15, 0.85); border: 1px solid var(--border-color); box-shadow: var(--neo-box-shadow);">
+        <h4 style="color: #c084fc; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; text-shadow: 0 0 8px rgba(192, 132, 252, 0.3);">
+          <i class="fa-solid fa-square-poll-vertical"></i> Structured AI Extraction
+        </h4>
+        <div id="resultsContent" style="white-space: pre-line; line-height: 1.6; color: var(--text-main);"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadSampleText() {
+  document.getElementById("analysisText").value = 
+    "Logistics Update from Dell Commercial Tech on 2026-10-01:\n" +
+    "Shipment PO-9921 containing 18 units of UltraBook Pro Laptop 15\" has successfully arrived at the Seattle warehouse facility. " +
+    "Inspector John Doe verified package integrity with zero reported damages. " +
+    "However, the supplier noted a short delay for next month's docking stations due to semiconductor component backlogs.";
+}
+
+document.getElementById("analysisForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = document.getElementById("analysisText").value.trim();
+  const btn = document.getElementById("analyzeBtn");
+  const resCard = document.getElementById("resultsCard");
+  const resContent = document.getElementById("resultsContent");
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+  resCard.style.display = "block";
+  resContent.innerHTML = '<div style="color: var(--text-dim);"><i class="fa-solid fa-circle-notch fa-spin"></i> Running text analysis with Microsoft Foundry...</div>';
+
+  try {
+    const res = await fetch("/api/text-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.result) {
+      resContent.innerHTML = formatMarkdown(data.result);
+    } else {
+      resContent.innerHTML = `<span style="color:#f87171;">Error: ${escapeHtml(data.error || "Analysis failed.")}</span>`;
+    }
+  } catch (err) {
+    resContent.innerHTML = `<span style="color:#f87171;">Network error connecting to API.</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-brain"></i> Analyze Text';
+  }
+});
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/^### (.*$)/gim, '<h4 style="color:#c084fc; margin: 10px 0 4px 0;">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 style="color:#c084fc; margin: 12px 0 6px 0;">$1</h3>');
+  html = html.replace(/^\* (.*$)/gim, '<li style="margin-left: 20px;">$1</li>');
+  html = html.replace(/^- (.*$)/gim, '<li style="margin-left: 20px;">$1</li>');
+  html = html.replace(/\n/g, "<br>");
+  return html;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

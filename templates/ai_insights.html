@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}AI Insights - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-brain"></i> AI Inventory Insights & Intelligence Center
+{% endblock %}
+
+{% block content %}
+<!-- AI Action Controls Card -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary);"></i> Automated AI Analytics</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button id="btnRunAnalyze" class="btn btn-cyan btn-sm" onclick="triggerAIAction('analyze')">
+        <i class="fa-solid fa-chart-pie"></i> Run Comprehensive Diagnostic
+      </button>
+      <button id="btnRunRecommend" class="btn btn-primary btn-sm" onclick="triggerAIAction('recommend')">
+        <i class="fa-solid fa-boxes-packing"></i> Generate Restock Plan
+      </button>
+      <button id="btnRunSummary" class="btn btn-secondary btn-sm" onclick="triggerAIAction('summary')">
+        <i class="fa-solid fa-file-lines"></i> Executive Summary
+      </button>
+    </div>
+  </div>
+  <div class="card-body">
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Trigger Microsoft Foundry models to evaluate real-time stock-out risks, prioritize supply orders based on threshold deficits, and audit category health.
+    </p>
+
+    <!-- Real-time Progress / Results Box -->
+    <div id="aiRunStatus" style="display: none; margin-top: 16px; padding: 16px; border-radius: 8px; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color);">
+      <div id="aiStatusContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Stored Insights History List -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-list-check" style="color: var(--primary);"></i> Recorded Intelligence & Advisory Log</h3>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <span style="font-size: 0.8rem; color: var(--text-dim);">Filter Priority:</span>
+      <select id="priorityFilter" class="form-control" style="width: auto; padding: 4px 10px; font-size: 0.85rem;" onchange="loadStoredInsights()">
+        <option value="">All Priorities</option>
+        <option value="HIGH">High Priority Only</option>
+        <option value="MEDIUM">Medium Priority Only</option>
+        <option value="LOW">Low Priority Only</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadStoredInsights()">
+        <i class="fa-solid fa-rotate"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="card-body" id="insightsListContainer" style="display: flex; flex-direction: column; gap: 16px;">
+    <div style="text-align: center; color: var(--text-dim); padding: 32px;">
+      <i class="fa-solid fa-spinner fa-spin"></i> Loading recorded AI insights...
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  loadStoredInsights();
+});
+
+async function loadStoredInsights() {
+  const container = document.getElementById("insightsListContainer");
+  const priority = document.getElementById("priorityFilter").value;
+  let url = "/api/ai/insights";
+  if (priority) url += `?priority=${priority}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.success) {
+      renderInsights(data.insights);
+    }
+  } catch (err) {
+    container.innerHTML = `<div style="text-align: center; color: #f87171; padding: 24px;">Failed to load AI insights.</div>`;
+  }
+}
+
+function renderInsights(insights) {
+  const container = document.getElementById("insightsListContainer");
+  if (!insights || insights.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-dim); padding: 40px;">
+        <i class="fa-solid fa-robot" style="font-size: 2.2rem; margin-bottom: 12px; display: block; color: var(--primary);"></i>
+        No AI insights found matching criteria.<br>
+        Click <strong>"Run Comprehensive Diagnostic"</strong> above to generate new insights via Microsoft Foundry!
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = insights.map(i => {
+    let priorityBadge = "badge-priority-medium";
+    if (i.priority === "HIGH") priorityBadge = "badge-priority-high";
+    if (i.priority === "LOW") priorityBadge = "badge-priority-low";
+
+    const dateStr = i.created_at ? new Date(i.created_at).toLocaleString() : "";
+
+    return `
+      <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="badge ${priorityBadge}">${i.priority} PRIORITY</span>
+            <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3);">
+              ${escapeHtml(i.insight_type)}
+            </span>
+            <strong style="color: #fff; font-size: 0.95rem; margin-left: 6px;">
+              <i class="fa-solid fa-cube" style="color: var(--primary);"></i> ${escapeHtml(i.product_name)}
+            </strong>
+          </div>
+          <span style="font-size: 0.78rem; color: var(--text-dim);">${dateStr}</span>
+        </div>
+        <div style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5; white-space: pre-line;">
+          ${formatMarkdown(i.recommendation)}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function triggerAIAction(action) {
+  const statusBox = document.getElementById("aiRunStatus");
+  const content = document.getElementById("aiStatusContent");
+  const btn = action === 'analyze' ? document.getElementById("btnRunAnalyze") :
+              (action === 'recommend' ? document.getElementById("btnRunRecommend") : document.getElementById("btnRunSummary"));
+
+  const originalText = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+  statusBox.style.display = "block";
+  content.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px; color: var(--primary);">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <span>Executing AI query with Microsoft Foundry model. Gathering SQLite context...</span>
+    </div>
+  `;
+
+  let endpoint = "/api/ai/analyze";
+  let method = "POST";
+  if (action === "recommend") {
+    endpoint = "/api/ai/recommend";
+    method = "POST";
+  } else if (action === "summary") {
+    endpoint = "/api/ai/inventory-summary";
+    method = "GET";
+  }
+
+  try {
+    const res = await fetch(endpoint, {
+      method: method,
+      headers: { "Content-Type": "application/json" }
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      const output = data.response || data.summary || "Action completed successfully.";
+      content.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; color: #34d399; margin-bottom: 8px;">
+          <i class="fa-solid fa-circle-check"></i>
+          <strong>Microsoft Foundry Analysis Completed & Saved:</strong>
+        </div>
+        <div style="font-size: 0.9rem; color: #e2e8f0; line-height: 1.5;">
+          ${formatMarkdown(output)}
+        </div>
+      `;
+      loadStoredInsights();
+    } else {
+      content.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; color: #f87171; margin-bottom: 6px;">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <strong>Microsoft Foundry Service Notice:</strong>
+        </div>
+        <p style="font-size: 0.88rem; color: #fecaca; line-height: 1.4;">
+          ${escapeHtml(data.error || "AI service returned an unexpected status.")}
+        </p>
+      `;
+    }
+  } catch (err) {
+    content.innerHTML = `
+      <div style="color: #f87171;">
+        <i class="fa-solid fa-circle-xmark"></i> Network error connecting to backend AI service.
+      </div>
+    `;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = escapeHtml(text);
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/`(.*?)`/g, '<code style="background:#1e293b; padding:2px 4px; border-radius:3px;">$1</code>');
+  html = html.replace(/\n\n/g, '<div style="margin-top: 8px;"></div>');
+  html = html.replace(/\n/g, "<br>");
+  return html;
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

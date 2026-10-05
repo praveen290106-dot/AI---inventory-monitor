@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-warehouse"></i> Inventory Warehouse Operations
+{% endblock %}
+
+{% block content %}
+<!-- Quick Operations Bar -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-bolt" style="color: #fbbf24;"></i> Quick Inventory Actions</h3>
+    <div style="display: flex; gap: 10px;">
+      <button class="btn btn-success btn-sm" onclick="openOperationModal('STOCK_IN')">
+        <i class="fa-solid fa-arrow-down"></i> Record Stock-In
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="openOperationModal('STOCK_OUT')">
+        <i class="fa-solid fa-arrow-up"></i> Record Stock-Out
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="openOperationModal('ADJUST')">
+        <i class="fa-solid fa-sliders"></i> Audit Adjustment
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Inventory Status Overview Cards -->
+<div class="stats-grid" style="margin-bottom: 24px;">
+  <div class="stat-card">
+    <div class="stat-icon green">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Normal Stock Items</span>
+      <span class="stat-value" id="normalCount">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon amber">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Low Stock (At Risk)</span>
+      <span class="stat-value" id="lowCount">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon red">
+      <i class="fa-solid fa-circle-xmark"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Out of Stock (Critical)</span>
+      <span class="stat-value" id="outCount">--</span>
+    </div>
+  </div>
+</div>
+
+<!-- Master Inventory Table -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-boxes-stacked"></i> Live Stock Registry</h3>
+    <div class="search-input-wrapper" style="max-width: 300px;">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="inventorySearch" class="form-control" placeholder="Quick search product...">
+    </div>
+  </div>
+
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table" id="inventoryTable">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Current Stock</th>
+            <th>Min Level</th>
+            <th>Status</th>
+            <th>Unit Price</th>
+            <th>Valuation</th>
+            <th style="text-align: right;">Operations</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryTableBody">
+          <tr>
+            <td colspan="9" style="text-align: center; color: var(--text-dim); padding: 32px;">
+              <i class="fa-solid fa-spinner fa-spin"></i> Fetching live inventory status...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Unified Inventory Operation Modal -->
+<div class="modal-overlay" id="operationModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h4 id="operationModalTitle">Stock Operation</h4>
+      <button class="modal-close" onclick="closeOperationModal()">&times;</button>
+    </div>
+    <form id="operationForm">
+      <div class="modal-body">
+        <input type="hidden" id="opType">
+
+        <div class="form-group">
+          <label class="form-label">Select Product *</label>
+          <select id="opProductSelect" class="form-control" required onchange="onProductSelectChanged()">
+            <option value="">-- Choose a product --</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Current Available Units</label>
+            <input type="text" id="opCurrentUnits" class="form-control" readonly value="--">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" id="opQtyLabel">Units to Transact *</label>
+            <input type="number" id="opQtyInput" class="form-control" min="1" value="5" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reason / Reference Remarks</label>
+          <input type="text" id="opRemarks" class="form-control" placeholder="e.g. Sales order, Supplier shipment, Physical count check">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeOperationModal()">Cancel</button>
+        <button type="submit" id="opSubmitBtn" class="btn btn-success">
+          <i class="fa-solid fa-check"></i> Execute
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let inventoryData = [];
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadInventory();
+  document.getElementById("inventorySearch").addEventListener("input", filterTable);
+  setupOperationForm();
+});
+
+async function loadInventory() {
+  try {
+    const res = await fetch("/api/inventory");
+    const data = await res.json();
+    if (data.success) {
+      inventoryData = data.inventory;
+      updateOverviewStats(inventoryData);
+      populateProductSelect(inventoryData);
+      renderInventoryTable(inventoryData);
+    }
+  } catch (err) {
+    document.getElementById("inventoryTableBody").innerHTML = `
+      <tr><td colspan="9" style="text-align: center; color: #f87171; padding: 24px;">Failed to load inventory.</td></tr>
+    `;
+  }
+}
+
+function updateOverviewStats(items) {
+  let normal = 0, low = 0, out = 0;
+  items.forEach(i => {
+    if (i.status === "OUT_OF_STOCK") out++;
+    else if (i.status === "LOW_STOCK") low++;
+    else normal++;
+  });
+  document.getElementById("normalCount").innerText = normal;
+  document.getElementById("lowCount").innerText = low;
+  document.getElementById("outCount").innerText = out;
+}
+
+function populateProductSelect(items) {
+  const sel = document.getElementById("opProductSelect");
+  sel.innerHTML = '<option value="">-- Choose a product --</option>';
+  items.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.dataset.qty = p.quantity;
+    opt.innerText = `${p.product_name} (${p.quantity} in stock)`;
+    sel.appendChild(opt);
+  });
+}
+
+function onProductSelectChanged() {
+  const sel = document.getElementById("opProductSelect");
+  const selectedOption = sel.options[sel.selectedIndex];
+  if (selectedOption && selectedOption.dataset.qty !== undefined) {
+    document.getElementById("opCurrentUnits").value = selectedOption.dataset.qty;
+  } else {
+    document.getElementById("opCurrentUnits").value = "--";
+  }
+}
+
+function renderInventoryTable(items) {
+  const tbody = document.getElementById("inventoryTableBody");
+  if (!items || items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-dim); padding: 32px;">No inventory items found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(p => {
+    let badgeClass = "badge-normal";
+    let badgeText = "Normal";
+    if (p.status === "OUT_OF_STOCK") {
+      badgeClass = "badge-out";
+      badgeText = "Out of Stock";
+    } else if (p.status === "LOW_STOCK") {
+      badgeClass = "badge-low";
+      badgeText = "Low Stock";
+    }
+
+    const safeName = escapeHtml(p.product_name).replace(/'/g, "\\'");
+
+    return `
+      <tr>
+        <td><code>#${p.id}</code></td>
+        <td><strong>${escapeHtml(p.product_name)}</strong></td>
+        <td><span style="color: var(--text-muted);">${escapeHtml(p.category)}</span></td>
+        <td><strong style="color: ${p.status === 'OUT_OF_STOCK' ? '#f87171' : (p.status === 'LOW_STOCK' ? '#fbbf24' : '#34d399')};">${p.quantity}</strong></td>
+        <td style="color: var(--text-dim);">${p.minimum_stock}</td>
+        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+        <td>$${p.price.toFixed(2)}</td>
+        <td>$${p.total_value.toFixed(2)}</td>
+        <td style="text-align: right; white-space: nowrap;">
+          <button class="btn btn-sm btn-success" title="Stock In" onclick="openProductOp(${p.id}, 'STOCK_IN')">
+            <i class="fa-solid fa-arrow-down"></i> In
+          </button>
+          <button class="btn btn-sm btn-danger" title="Stock Out" onclick="openProductOp(${p.id}, 'STOCK_OUT')">
+            <i class="fa-solid fa-arrow-up"></i> Out
+          </button>
+          <button class="btn btn-sm btn-secondary" title="Audit Adjust" onclick="openProductOp(${p.id}, 'ADJUST')">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function filterTable() {
+  const query = document.getElementById("inventorySearch").value.toLowerCase().trim();
+  const filtered = inventoryData.filter(p =>
+    p.product_name.toLowerCase().includes(query) ||
+    p.category.toLowerCase().includes(query)
+  );
+  renderInventoryTable(filtered);
+}
+
+function openOperationModal(opType) {
+  document.getElementById("opType").value = opType;
+  const title = document.getElementById("operationModalTitle");
+  const qtyLabel = document.getElementById("opQtyLabel");
+  const submitBtn = document.getElementById("opSubmitBtn");
+  const qtyInput = document.getElementById("opQtyInput");
+
+  if (opType === "STOCK_IN") {
+    title.innerHTML = '<i class="fa-solid fa-arrow-down" style="color: #10b981;"></i> Record Stock-In (Receive Goods)';
+    qtyLabel.innerText = "Units to Add";
+    submitBtn.className = "btn btn-success";
+    submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Confirm Stock-In';
+    qtyInput.min = 1;
+    qtyInput.value = 10;
+  } else if (opType === "STOCK_OUT") {
+    title.innerHTML = '<i class="fa-solid fa-arrow-up" style="color: #ef4444;"></i> Record Stock-Out (Dispatch Goods)';
+    qtyLabel.innerText = "Units to Dispatch";
+    submitBtn.className = "btn btn-danger";
+    submitBtn.innerHTML = '<i class="fa-solid fa-minus"></i> Confirm Stock-Out';
+    qtyInput.min = 1;
+    qtyInput.value = 5;
+  } else {
+    title.innerHTML = '<i class="fa-solid fa-sliders" style="color: #818cf8;"></i> Inventory Audit Adjustment';
+    qtyLabel.innerText = "New Actual Quantity";
+    submitBtn.className = "btn btn-secondary";
+    submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Set Exact Stock';
+    qtyInput.min = 0;
+    qtyInput.value = 0;
+  }
+
+  document.getElementById("operationModal").classList.add("active");
+}
+
+function openProductOp(productId, opType) {
+  openOperationModal(opType);
+  const sel = document.getElementById("opProductSelect");
+  sel.value = productId;
+  onProductSelectChanged();
+}
+
+function closeOperationModal() {
+  document.getElementById("operationModal").classList.remove("active");
+}
+
+function setupOperationForm() {
+  document.getElementById("operationForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const opType = document.getElementById("opType").value;
+    const productId = parseInt(document.getElementById("opProductSelect").value);
+    const qty = parseInt(document.getElementById("opQtyInput").value);
+    const remarks = document.getElementById("opRemarks").value.trim();
+
+    if (!productId) {
+      alert("Please select a product.");
+      return;
+    }
+
+    let endpoint = "/api/inventory/stock-in";
+    if (opType === "STOCK_OUT") endpoint = "/api/inventory/stock-out";
+    else if (opType === "ADJUST") endpoint = "/api/inventory/adjust";
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId, quantity: qty, remarks: remarks })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        closeOperationModal();
+        loadInventory();
+      } else {
+        alert(data.error || "Operation failed.");
+      }
+    } catch (err) {
+      alert("Network error processing transaction.");
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

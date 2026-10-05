@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - Microsoft Foundry AI{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-comments"></i> Microsoft Foundry General AI Chat
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto; width: 100%;">
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="chat-assistant-info">
+        <div class="assistant-avatar">
+          <i class="fa-solid fa-microchip"></i>
+        </div>
+        <div>
+          <h3 style="font-size: 1rem; color: #fff;">Microsoft Foundry Model (gpt-4.1-mini)</h3>
+          <span style="font-size: 0.75rem; color: var(--text-dim);">Live API Chat via /api/chat</span>
+        </div>
+      </div>
+      <a href="{{ url_for('ai.ai_assistant_page') }}" class="btn btn-cyan btn-sm">
+        <i class="fa-solid fa-warehouse"></i> Inventory Intelligence Chat
+      </a>
+    </div>
+
+    <div class="chat-messages" id="generalChatMessages">
+      <div class="message-bubble assistant">
+        <div class="assistant-avatar" style="width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0;">
+          <i class="fa-solid fa-robot"></i>
+        </div>
+        <div class="message-content">
+          <p>Hello! I am connected to your <strong>gpt-4.1-mini</strong> deployment on Microsoft Foundry. How can I help you today?</p>
+        </div>
+      </div>
+    </div>
+
+    <form id="generalChatForm" class="chat-input-bar">
+      <input type="text" id="generalInput" class="form-control" placeholder="Type a message..." required autocomplete="off">
+      <button type="submit" id="generalSendBtn" class="btn btn-cyan">
+        <i class="fa-solid fa-paper-plane"></i> Send
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("generalChatForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("generalInput");
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const container = document.getElementById("generalChatMessages");
+  const sendBtn = document.getElementById("generalSendBtn");
+
+  // Append user message
+  const userBubble = document.createElement("div");
+  userBubble.className = "message-bubble user";
+  userBubble.innerHTML = `<div class="message-content"><p>${escapeHtml(msg)}</p></div>`;
+  container.appendChild(userBubble);
+
+  input.value = "";
+  sendBtn.disabled = true;
+
+  // Typing bubble
+  const typingId = "typing-" + Date.now();
+  const typingBubble = document.createElement("div");
+  typingBubble.id = typingId;
+  typingBubble.className = "message-bubble assistant";
+  typingBubble.innerHTML = `
+    <div class="assistant-avatar" style="width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0;"><i class="fa-solid fa-robot"></i></div>
+    <div class="message-content" style="color: var(--text-dim); display:flex; align-items:center; gap:8px;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="color:var(--primary);"></i> Thinking...
+    </div>
+  `;
+  container.appendChild(typingBubble);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    document.getElementById(typingId)?.remove();
+
+    const replyBubble = document.createElement("div");
+    replyBubble.className = "message-bubble assistant";
+    if (res.ok && data.reply) {
+      replyBubble.innerHTML = `
+        <div class="assistant-avatar" style="width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0;"><i class="fa-solid fa-robot"></i></div>
+        <div class="message-content"><p style="white-space: pre-line;">${escapeHtml(data.reply)}</p></div>
+      `;
+    } else {
+      replyBubble.innerHTML = `
+        <div class="assistant-avatar" style="width: 32px; height: 32px; font-size: 0.9rem; flex-shrink: 0; background: #dc2626;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="message-content" style="border-color: rgba(239, 68, 68, 0.4);"><p style="color:#f87171;">Error: ${escapeHtml(data.error || "Failed to reach AI.")}</p></div>
+      `;
+    }
+    container.appendChild(replyBubble);
+  } catch (err) {
+    document.getElementById(typingId)?.remove();
+    const errorBubble = document.createElement("div");
+    errorBubble.className = "message-bubble assistant";
+    errorBubble.innerHTML = `<div class="message-content"><p style="color:#f87171;">Network error connecting to API.</p></div>`;
+    container.appendChild(errorBubble);
+  } finally {
+    sendBtn.disabled = false;
+    container.scrollTop = container.scrollHeight;
+    input.focus();
+  }
+});
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

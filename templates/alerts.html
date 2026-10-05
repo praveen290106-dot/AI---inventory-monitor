@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts - AI-Powered Inventory Monitor{% endblock %}
+
+{% block page_title %}
+<i class="fa-solid fa-triangle-exclamation"></i> Stock Health & Inventory Alerts
+{% endblock %}
+
+{% block content %}
+<!-- Alert Level Summary KPI Cards -->
+<div class="stats-grid" style="margin-bottom: 24px;">
+  <div class="stat-card" style="border-left: 4px solid var(--status-out);">
+    <div class="stat-icon red">
+      <i class="fa-solid fa-ban"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Critical Out of Stock</span>
+      <span class="stat-value" id="alertOutCount">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card" style="border-left: 4px solid var(--status-low);">
+    <div class="stat-icon amber">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Low Stock Warnings</span>
+      <span class="stat-value" id="alertLowCount">--</span>
+    </div>
+  </div>
+
+  <div class="stat-card" style="border-left: 4px solid var(--status-normal);">
+    <div class="stat-icon green">
+      <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <div class="stat-details">
+      <span class="stat-label">Normal / Healthy Items</span>
+      <span class="stat-value" id="alertNormalCount">--</span>
+    </div>
+  </div>
+</div>
+
+<!-- Critical Out of Stock Section -->
+<div class="card" style="border-top: 3px solid #ef4444; margin-bottom: 28px;">
+  <div class="card-header">
+    <h3 style="color: #f87171;">
+      <i class="fa-solid fa-circle-exclamation"></i> Critical: Out of Stock (0 Units)
+    </h3>
+    <span class="badge badge-out">Urgent Attention</span>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Current Stock</th>
+            <th>Minimum Required</th>
+            <th>Supplier</th>
+            <th>Unit Price</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="outOfStockTbody">
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">Scanning for stockouts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Low Stock Warning Section -->
+<div class="card" style="border-top: 3px solid #f59e0b; margin-bottom: 28px;">
+  <div class="card-header">
+    <h3 style="color: #fbbf24;">
+      <i class="fa-solid fa-triangle-exclamation"></i> Warning: Low Stock (At or Below Threshold)
+    </h3>
+    <span class="badge badge-low">Reorder Recommended</span>
+  </div>
+  <div class="card-body" style="padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Current Units</th>
+            <th>Minimum Threshold</th>
+            <th>Deficit to Threshold</th>
+            <th>Supplier</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="lowStockTbody">
+          <tr><td colspan="7" style="text-align: center; color: var(--text-dim); padding: 24px;">Scanning for low stock...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Healthy Stock Section (Collapsible) -->
+<div class="card" style="border-top: 3px solid #10b981;">
+  <div class="card-header" style="cursor: pointer;" onclick="toggleHealthyTable()">
+    <h3 style="color: #34d399;">
+      <i class="fa-solid fa-circle-check"></i> Healthy / Normal Stock Items
+    </h3>
+    <span style="font-size: 0.85rem; color: var(--text-dim);" id="healthyToggleText">Click to expand &darr;</span>
+  </div>
+  <div class="card-body" id="healthyTableContainer" style="display: none; padding: 0;">
+    <div class="table-responsive">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Available Units</th>
+            <th>Threshold</th>
+            <th>Status</th>
+            <th>Supplier</th>
+          </tr>
+        </thead>
+        <tbody id="healthyStockTbody">
+          <tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">Loading healthy products...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Restock Modal -->
+<div class="modal-overlay" id="alertRestockModal">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <h4><i class="fa-solid fa-cart-flatbed"></i> Replenish Stock</h4>
+      <button class="modal-close" onclick="closeAlertRestockModal()">&times;</button>
+    </div>
+    <form id="alertRestockForm">
+      <div class="modal-body">
+        <input type="hidden" id="alertProductId">
+        <div class="form-group">
+          <label class="form-label">Product</label>
+          <input type="text" id="alertProductName" class="form-control" readonly>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Current Level</label>
+            <input type="text" id="alertCurrentLevel" class="form-control" readonly>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Units to Add *</label>
+            <input type="number" id="alertAddQty" class="form-control" min="1" value="15" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Replenishment Note</label>
+          <input type="text" id="alertRemarks" class="form-control" placeholder="Restock replenishment via alerts monitor">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAlertRestockModal()">Cancel</button>
+        <button type="submit" class="btn btn-success"><i class="fa-solid fa-check"></i> Add Stock</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  loadAlertsData();
+  setupAlertRestockHandler();
+});
+
+async function loadAlertsData() {
+  try {
+    const res = await fetch("/api/inventory");
+    const data = await res.json();
+    if (data.success) {
+      const all = data.inventory;
+      const outList = all.filter(p => p.status === "OUT_OF_STOCK");
+      const lowList = all.filter(p => p.status === "LOW_STOCK");
+      const normalList = all.filter(p => p.status === "NORMAL");
+
+      document.getElementById("alertOutCount").innerText = outList.length;
+      document.getElementById("alertLowCount").innerText = lowList.length;
+      document.getElementById("alertNormalCount").innerText = normalList.length;
+
+      renderOutTable(outList);
+      renderLowTable(lowList);
+      renderHealthyTable(normalList);
+    }
+  } catch (err) {
+    console.error("Error loading alerts:", err);
+  }
+}
+
+function renderOutTable(items) {
+  const tbody = document.getElementById("outOfStockTbody");
+  if (!items || items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #10b981; padding: 24px;">
+      <i class="fa-solid fa-check-circle"></i> Excellent! Zero products are currently out of stock.
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(p => {
+    const safeName = escapeHtml(p.product_name).replace(/'/g, "\\'");
+    return `
+      <tr>
+        <td><strong>${escapeHtml(p.product_name)}</strong></td>
+        <td><span style="color: var(--text-muted);">${escapeHtml(p.category)}</span></td>
+        <td><strong style="color: #f87171;">0 units</strong></td>
+        <td>${p.minimum_stock} units</td>
+        <td><span style="color: var(--text-dim);">${escapeHtml(p.supplier || 'N/A')}</span></td>
+        <td>$${p.price.toFixed(2)}</td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-cyan" onclick="openAlertModal(${p.id}, '${safeName}', 0, ${p.minimum_stock})">
+            <i class="fa-solid fa-plus"></i> Restock Now
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderLowTable(items) {
+  const tbody = document.getElementById("lowStockTbody");
+  if (!items || items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #10b981; padding: 24px;">
+      <i class="fa-solid fa-check-circle"></i> No products are below their minimum stock threshold.
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(p => {
+    const safeName = escapeHtml(p.product_name).replace(/'/g, "\\'");
+    const deficit = p.minimum_stock - p.quantity;
+    return `
+      <tr>
+        <td><strong>${escapeHtml(p.product_name)}</strong></td>
+        <td><span style="color: var(--text-muted);">${escapeHtml(p.category)}</span></td>
+        <td><strong style="color: #fbbf24;">${p.quantity} units</strong></td>
+        <td>${p.minimum_stock} units</td>
+        <td><span style="color: #f87171;">-${deficit} units</span></td>
+        <td><span style="color: var(--text-dim);">${escapeHtml(p.supplier || 'N/A')}</span></td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-cyan" onclick="openAlertModal(${p.id}, '${safeName}', ${p.quantity}, ${p.minimum_stock})">
+            <i class="fa-solid fa-plus"></i> Restock
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderHealthyTable(items) {
+  const tbody = document.getElementById("healthyStockTbody");
+  if (!items || items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-dim); padding: 24px;">No healthy products cataloged.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(p => `
+    <tr>
+      <td><strong>${escapeHtml(p.product_name)}</strong></td>
+      <td><span style="color: var(--text-muted);">${escapeHtml(p.category)}</span></td>
+      <td><strong style="color: #34d399;">${p.quantity} units</strong></td>
+      <td>${p.minimum_stock} units</td>
+      <td><span class="badge badge-normal">Healthy</span></td>
+      <td><span style="color: var(--text-dim);">${escapeHtml(p.supplier || 'N/A')}</span></td>
+    </tr>
+  `).join("");
+}
+
+function toggleHealthyTable() {
+  const container = document.getElementById("healthyTableContainer");
+  const toggleText = document.getElementById("healthyToggleText");
+  if (container.style.display === "none") {
+    container.style.display = "block";
+    toggleText.innerHTML = "Click to collapse &uarr;";
+  } else {
+    container.style.display = "none";
+    toggleText.innerHTML = "Click to expand &darr;";
+  }
+}
+
+function openAlertModal(id, name, current, min) {
+  document.getElementById("alertProductId").value = id;
+  document.getElementById("alertProductName").value = name;
+  document.getElementById("alertCurrentLevel").value = `${current} units (Min: ${min})`;
+  document.getElementById("alertAddQty").value = Math.max(10, min * 2);
+  document.getElementById("alertRestockModal").classList.add("active");
+}
+
+function closeAlertRestockModal() {
+  document.getElementById("alertRestockModal").classList.remove("active");
+}
+
+function setupAlertRestockHandler() {
+  document.getElementById("alertRestockForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const productId = parseInt(document.getElementById("alertProductId").value);
+    const qty = parseInt(document.getElementById("alertAddQty").value);
+    const remarks = document.getElementById("alertRemarks").value.trim();
+
+    try {
+      const res = await fetch("/api/inventory/stock-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_id: productId, quantity: qty, remarks: remarks })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        closeAlertRestockModal();
+        loadAlertsData();
+      } else {
+        alert(data.error || "Failed to replenish stock.");
+      }
+    } catch (err) {
+      alert("Network error processing transaction.");
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}
