@@ -6,3 +6,4 @@ Werkzeug>=3.0.0
 requests>=2.31.0
 azure-ai-inference>=1.0.0b1
 openai>=1.0.0
+gunicorn
